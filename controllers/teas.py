@@ -1,50 +1,54 @@
 # teas.py
 
-from fastapi import APIRouter
-# from models.tea_data import teas_db
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from models.tea import TeaModel
+from serializers.tea import TeaSchema
+from typing import List
+from database import get_db
 
 router = APIRouter()
 
-@router.get("/teas")
-def get_teas():
-    # Retrieve all teas
-    return teas_db
+@router.get("/teas", response_model=List[TeaSchema])
+def get_teas(db: Session = Depends(get_db)):
+    teas = db.query(TeaModel).all()
+    return teas
 
-
-@router.get("/teas/{tea_id}")
-def get_single_tea(tea_id: int):
-    # Get tea by ID
-    for tea in teas_db['teas']:
-        if tea['id'] == tea_id:
-            return tea
-    # If tea with the given ID is not found
-    raise HTTPException(status_code=404, detail="Tea not found")
-
-@router.post("/teas")
-def create_tea(tea: dict):
-    # Create a new tea
-    teas_db["teas"].append(tea)
+@router.get("/teas/{tea_id}", response_model=TeaSchema)
+def get_single_tea(tea_id: int, db: Session = Depends(get_db)):
+    tea = db.query(TeaModel).filter(TeaModel.id == tea_id).first()
+    if not tea:
+        raise HTTPException(status_code=404, detail="Tea not found")
     return tea
 
-@router.put("/teas/{tea_id}")
-def update_tea(tea_id: int, tea: dict):
+@router.post("/teas", response_model=TeaSchema)
+def create_tea(tea: TeaSchema, db: Session = Depends(get_db)):
+    new_tea = TeaModel(**tea.dict()) # Convert Pydantic model to SQLAlchemy model
+    db.add(new_tea)
+    db.commit() # Save to database
+    db.refresh(new_tea) # Refresh to get the updated data (including auto-generated fields)
+    return new_tea
 
-    # Find the tea to update
-    for existing_tea in teas_db['teas']:
-        if existing_tea['id'] == tea_id:
-            existing_tea.update(tea)  # Update the existing tea's data
-            return existing_tea
+@router.put("/teas/{tea_id}", response_model=TeaSchema)
+def update_tea(tea_id: int, tea: TeaSchema, db: Session = Depends(get_db)):
+    db_tea = db.query(TeaModel).filter(TeaModel.id == tea_id).first()
+    if not db_tea:
+        raise HTTPException(status_code=404, detail="Tea not found")
 
-    # If tea was not found, raise an error
-    raise HTTPException(status_code=404, detail="Tea not found")
+    tea_data = tea.dict(exclude_unset=True)  # Only update the fields provided
+    for key, value in tea_data.items():
+        setattr(db_tea, key, value)
+
+    db.commit()  # Save changes
+    db.refresh(db_tea)  # Refresh to get updated data
+    return db_tea
 
 @router.delete("/teas/{tea_id}")
-def delete_tea(tea_id: int):
-    # Delete a tea by ID
-    for tea in teas_db['teas']:
-        if tea['id'] == tea_id:
-            teas_db['teas'].remove(tea)  # Remove the tea from the database
-            return {"message": f"Tea with ID {tea_id} has been deleted."}
+def delete_tea(tea_id: int, db: Session = Depends(get_db)):
+    db_tea = db.query(TeaModel).filter(TeaModel.id == tea_id).first()
+    if not db_tea:
+        raise HTTPException(status_code=404, detail="Tea not found")
 
-    # If tea was not found, raise an error
-    raise HTTPException(status_code=404, detail="Tea not found")
+    db.delete(db_tea)  # Remove from database
+    db.commit()  # Save changes
+    return {"message": f"Tea with ID {tea_id} has been deleted"}

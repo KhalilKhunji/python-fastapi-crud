@@ -9,7 +9,7 @@ class TeaModel(BaseModel):
 
     __tablename__ = "teas"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
 
     # Specific columns for our Tea Table.
     name = Column(String, unique=True)
