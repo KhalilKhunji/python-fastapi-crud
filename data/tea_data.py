@@ -4,15 +4,15 @@ from models.comment import CommentModel
 
 # List of teas to seed into the database
 teas_list = [
-    TeaModel(name="chai", rating=4, in_stock=True),
-    TeaModel(name="earl grey", rating=3, in_stock=False),
-    TeaModel(name="matcha", rating=3, in_stock=True),
-    TeaModel(name="green tea", rating=5, in_stock=True),
-    TeaModel(name="black tea", rating=4, in_stock=True),
-    TeaModel(name="oolong", rating=4, in_stock=False),
-    TeaModel(name="hibiscus", rating=4, in_stock=True),
-    TeaModel(name="peppermint", rating=5, in_stock=True),
-    TeaModel(name="jasmine", rating=3, in_stock=True)
+    TeaModel(name="chai", rating=4, in_stock=True, user_id=1),
+    TeaModel(name="earl grey", rating=3, in_stock=False, user_id=2),
+    TeaModel(name="matcha", rating=3, in_stock=True, user_id=4),
+    TeaModel(name="green tea", rating=5, in_stock=True, user_id=1),
+    TeaModel(name="black tea", rating=4, in_stock=True, user_id=5),
+    TeaModel(name="oolong", rating=4, in_stock=False, user_id=4),
+    TeaModel(name="hibiscus", rating=4, in_stock=True, user_id=3),
+    TeaModel(name="peppermint", rating=5, in_stock=True, user_id=3),
+    TeaModel(name="jasmine", rating=3, in_stock=True, user_id=5)
 ]
 
 # List of comments related to teas

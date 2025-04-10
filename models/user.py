@@ -5,8 +5,8 @@ from .base import Base
 from passlib.context import CryptContext # Import new package
 from datetime import datetime, timedelta, timezone
 import jwt
-
 from config.environment import secret
+from sqlalchemy.orm import relationship
 
 # Creating a password hashing context using bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,6 +19,9 @@ class UserModel(Base):
     username = Column(String, nullable=False, unique=True)
     email = Column(String, nullable=False, unique=True)
     password_hash = Column(String, nullable=True)  # Add new field for storing the hashed password
+
+    # Relationship - a user can have multiple teas
+    teas = relationship('TeaModel', back_populates='user')
 
     # Method to hash and store the password
     def set_password(self, password: str):
@@ -34,7 +37,7 @@ class UserModel(Base):
         payload = {
             "exp": datetime.now(timezone.utc) + timedelta(days=1),  # Expiration time (1 day)
             "iat": datetime.now(timezone.utc),  # Issued at time
-            "sub": self.id,  # Subject - the user ID
+            "sub": str(self.id),  # Subject - the user ID
         }
 
         # Create the JWT token
