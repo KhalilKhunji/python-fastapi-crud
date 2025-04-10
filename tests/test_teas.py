@@ -62,6 +62,7 @@ def test_create_tea(test_app: TestClient, test_db: Session):
     user.set_password('mys3cretp2ssw0rd')
     test_db.add(user)
     test_db.commit()
+    test_db.refresh(user)
 
     # Use the login helper to generate authentication headers for the new mock user
     headers = login(test_app, 'testUser123', 'mys3cretp2ssw0rd')
@@ -119,3 +120,124 @@ def test_update_tea(test_app: TestClient, test_db: Session, override_get_db):
     assert updated_tea['name'] == updated_data['name']
     assert updated_tea['in_stock'] == updated_data['in_stock']
     assert updated_tea['rating'] == updated_data['rating']
+
+def test_update_tea_not_found(test_app: TestClient, test_db: Session, override_get_db):
+    user = UserModel(username='someguy', email='someperson@example.com')
+    user.set_password('bestpassword')
+    test_db.add(user)
+    test_db.commit()
+    test_db.refresh(user)
+
+    headers = login(test_app, 'someguy', 'bestpassword')
+    max_tea_id = test_db.query(TeaModel.id).order_by(TeaModel.id.desc()).first()
+    if max_tea_id is None:
+        invalid_tea_id = 1
+    else:
+        invalid_tea_id = max_tea_id[0] + 1
+
+    updated_data = {
+        "name": "Updated Tea Name",
+        "in_stock": True,
+        "rating": 90
+    }
+
+    response = test_app.put(f"/api/teas/{invalid_tea_id}", headers=headers, json=updated_data)
+    assert response.status_code == 404
+    response_data = response.json()
+    assert response_data["detail"] == "Tea not found"
+
+
+def test_unauthorized_update_tea(test_app: TestClient, test_db: Session, override_get_db):
+    user1 = UserModel(username='user1', email='user1@example.com')
+    user1.set_password('password1')
+    test_db.add(user1)
+    test_db.commit()
+
+    user2 = UserModel(username='user2', email='user2@example.com')
+    user2.set_password('password2')
+    test_db.add(user2)
+    test_db.commit()
+
+    # Create a tea belonging to user1
+    tea = TeaModel(name="Chamomile (Yum)", in_stock=True, rating=100, user_id=user1.id)
+    test_db.add(tea)
+    test_db.commit()
+
+    # Log in as user2 (who does not own the tea)
+    headers = login(test_app, 'user2', 'password2')
+
+    updated_data = {
+        "name": "Chamomile (Yuck)",
+        "in_stock": False,
+        "rating": 0
+    }
+
+    # Attempt to update tea that belongs to user1, while logged in as user2
+    response = test_app.put(f"/api/teas/{tea.id}", headers=headers, json=updated_data)
+    assert response.status_code == 403
+    response_data = response.json()
+    assert response_data["detail"] == "Operation forbidden"
+
+def test_delete_tea(test_app: TestClient, test_db: Session, override_get_db):
+    user = UserModel(username='deleter', email='remover@example.com')
+    user.set_password('del')
+    test_db.add(user)
+    test_db.commit()
+    test_db.refresh(user)
+
+    headers = login(test_app, 'deleter', 'del')
+
+    tea = TeaModel(name="Not Long For This World Tea", in_stock=True, rating=6, user_id=user.id)
+    test_db.add(tea)
+    test_db.commit()
+
+    response = test_app.delete(f"/api/teas/{tea.id}", headers=headers)
+    assert response.status_code == 200
+    # Try to retrieve the deleted tea
+    response = test_app.get(f"/api/teas/{tea.id}", headers=headers)
+    assert response.status_code == 404
+    response_data = response.json()
+    assert response_data["detail"] == "Tea not found"
+
+def test_tea_not_found_for_deletion(test_app: TestClient, test_db: Session, override_get_db):
+    user = UserModel(username='remover', email='deleter@example.com')
+    user.set_password('swingandamiss')
+    test_db.add(user)
+    test_db.commit()
+    test_db.refresh(user)
+
+    headers = login(test_app, 'remover', 'swingandamiss')
+
+    max_tea_id = test_db.query(TeaModel.id).order_by(TeaModel.id.desc()).first()
+    if max_tea_id is None:
+        invalid_tea_id = 1
+    else:
+        invalid_tea_id = max_tea_id[0] + 1
+
+    response = test_app.delete(f"/api/teas/{invalid_tea_id}", headers=headers)
+    assert response.status_code == 404
+    response_data = response.json()
+    assert response_data["detail"] == "Tea not found"
+
+def test_unauthorized_deletion(test_app: TestClient, test_db: Session, override_get_db):
+    user_a= UserModel(username='usera', email='usera@example.com')
+    user_a.set_password('passworda')
+    test_db.add(user_a)
+    test_db.commit()
+
+    user_b = UserModel(username='userb', email='userb@example.com')
+    user_b.set_password('passwordb')
+    test_db.add(user_b)
+    test_db.commit()
+
+    tea = TeaModel(name="What is a Tea?", in_stock=True, rating=100, user_id=user_a.id)
+    test_db.add(tea)
+    test_db.commit()
+
+    # Log in as user2 (who does not own the tea)
+    headers = login(test_app, 'userb', 'passwordb')
+
+    response = test_app.delete(f"/api/teas/{tea.id}", headers=headers)
+    assert response.status_code == 403
+    response_data = response.json()
+    assert response_data["detail"] == "Operation forbidden"
