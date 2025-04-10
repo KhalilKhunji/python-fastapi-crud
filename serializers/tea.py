@@ -20,3 +20,11 @@ class TeaCreate(BaseModel):
     name: str
     in_stock: bool
     rating: int
+
+class TeaUpdate(BaseModel):
+    name: Optional[str] = None
+    in_stock: Optional[bool] = None
+    rating: Optional[int] = None
+
+    class Config:
+        orm_mode = True
