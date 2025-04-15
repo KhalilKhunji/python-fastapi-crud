@@ -234,7 +234,7 @@ def test_unauthorized_deletion(test_app: TestClient, test_db: Session, override_
     test_db.add(tea)
     test_db.commit()
 
-    # Log in as user2 (who does not own the tea)
+    # Log in as user_b (who does not own the tea)
     headers = login(test_app, 'userb', 'passwordb')
 
     response = test_app.delete(f"/api/teas/{tea.id}", headers=headers)
